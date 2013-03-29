@@ -1,0 +1,42 @@
+#!/usr/bin/perl
+
+use 5.14.2;
+use warnings;
+use strict;
+
+use Readonly;
+
+# Set the modes in which this program can be used
+Readonly my $DEFAULT_KEY => 'default';
+Readonly my %SUB_FOR => (
+    lachesis => \&set_ttl,
+    atropos  => \&delete_expired,
+    $DEFAULT_KEY  => \&print_help,
+);
+
+# Act according to the user's request
+my $command = shift @ARGV || $DEFAULT_KEY;
+if (!exists $SUB_FOR{$command}) {
+    $command = $DEFAULT_KEY;
+}
+$SUB_FOR{$command}->(@ARGV);
+
+# Update the expiry time for a given file or glob
+sub set_ttl {
+    my $glob = shift;
+    my $ttl  = shift;
+
+    say "Would set $glob\'s time to live to $ttl.";
+}
+
+# Delete all files that have expired
+sub delete_expired {
+    say 'Would delete all expired files.';
+}
+
+# Emit a helpful message
+sub print_help {
+    say 'Usage:';
+    say '    moirai lachesis <filename>|"<glob>" <time to live>';
+    say '    moirai atropos';
+}
