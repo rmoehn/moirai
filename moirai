@@ -5,6 +5,10 @@ use warnings;
 use strict;
 
 use Readonly;
+use YAML::Tiny;
+use Data::Dumper;
+
+Readonly my $TTL_DB_FILE => $ENV{HOME} . '/.moirai';
 
 # Set the modes in which this program can be used
 Readonly my $DEFAULT_KEY => 'default';
@@ -14,19 +18,31 @@ Readonly my %SUB_FOR => (
     $DEFAULT_KEY  => \&print_help,
 );
 
+# Open the TTL database
+my $ttl_db = -e $TTL_DB_FILE ? YAML::Tiny->read($TTL_DB_FILE)
+                             : YAML::Tiny->new();
+if (!defined $ttl_db) {
+    die "Cannot read from $TTL_DB_FILE: ", $ttl_db->errstr();
+}
+
 # Act according to the user's request
 my $command = shift @ARGV || $DEFAULT_KEY;
 if (!exists $SUB_FOR{$command}) {
     $command = $DEFAULT_KEY;
 }
-$SUB_FOR{$command}->(@ARGV);
+$SUB_FOR{$command}->($ttl_db, @ARGV);
+
+# Write modifications to the database
+$ttl_db->write($TTL_DB_FILE)
+    or die "Cannot write to $TTL_DB_FILE: ", $ttl_db->errstr();
 
 # Update the expiry time for a given file or glob
 sub set_ttl {
-    my $glob = shift;
-    my $ttl  = shift;
+    my $ttl_db = shift;
+    my $glob   = shift;
+    my $ttl    = shift;
 
-    say "Would set $glob\'s time to live to $ttl.";
+    $ttl_db->[0]->{$glob} = $ttl;
 }
 
 # Delete all files that have expired
