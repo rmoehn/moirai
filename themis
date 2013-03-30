@@ -1,0 +1,33 @@
+#!/usr/bin/perl
+
+# This program doesn't quite live up to its name, but I wanted to stay with
+# the old Greek. It simply looks at emails' (Maildir) Date: entries and
+# adjusts their mtimes accordingly.
+
+use 5.010;
+use warnings;
+use strict;
+use autodie qw(:all);
+
+use Perl6::Slurp;
+
+use Email::Simple;
+use Email::Simple::Header;
+use DateTime::Format::Mail;
+
+use File::Touch;
+
+
+# Go through the specified email files
+for my $email_fn (@ARGV) {
+    # Determine the date
+    my $email_text = slurp $email_fn;
+    my $email      = Email::Simple->new($email_text);
+    my $date_field = $email->header("Date");
+    my $parser   = DateTime::Format::Mail->new(loose => 1);
+    my $datetime = $parser->parse_datetime($date_field);
+
+    # Correct the email's mtime
+    my $toucher = File::Touch->new( mtime => $datetime->epoch() );
+    $toucher->touch($email_fn);
+}
