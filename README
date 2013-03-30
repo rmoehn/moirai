@@ -1,7 +1,7 @@
 Moirai
 
 With this program you can add a "shelf life" to files: When a file
-hasn't been changed (ctime) for a specified time, it is deleted.
+hasn't been modified (mtime) for a specified time, it is deleted.
 
 This is just a quick hack. I hope to have the time to make a proper
 package of this, but that may as well be never. However, if you send me
