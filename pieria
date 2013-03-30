@@ -1,0 +1,35 @@
+#!/usr/bin/perl
+
+# Creates an index database that maps from SHA-1 hash to files with those
+# hashes.
+#
+# I chose SHA1 as hashing method as Git uses it, too, and I am not striving
+# for cryptograpic safety.
+
+use 5.010;
+use warnings;
+use strict;
+
+use Readonly;
+use File::Find;
+use Perl6::Slurp;
+use Digest::SHA qw(sha1);
+use Storable;
+
+Readonly my $START_DIR => $ARGV[0];
+Readonly my $INDEX_DB  => $ARGV[1];
+
+my %path_for;
+find(\&add_to_index, $START_DIR);
+
+store \%path_for, $INDEX_DB
+    or die "Cannot write to $INDEX_DB: $!";
+
+sub add_to_index {
+    return if !-f $File::Find::name;
+
+    my $hash         = Digest::SHA->new(1)
+                                   ->addfile($File::Find::name)
+                                   ->digest();
+    $path_for{$hash} = $File::Find::name;
+}

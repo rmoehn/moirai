@@ -1,0 +1,37 @@
+#!/usr/bin/perl
+
+# This program doesn't quite live up to its name, either. And it hasn't much
+# to do with Klotho. Its just that I didn't want to upset her by excluding her
+# from my reverence.
+#
+# Based on its first argument and the email received at STDIN, Klotho calls
+# Moiron Lachesis to alot a TTL for this email.
+#
+# Why that? Because I haven't found a way to make Mutt invoke a command on
+# the current email file. Therefore we have to operate on a database of hashes
+# created by Pieria.
+
+use 5.010;
+use warnings;
+use strict;
+use autodie qw(:all);
+
+use Readonly;
+use Digest::SHA;
+use Storable;
+
+Readonly my $MAIL_BASE_DIR => $ENV{HOME} . '/mail';
+Readonly my $HASH_DB       => $ENV{HOME} . '/mail/.klotho';
+Readonly my $TTL           => $ARGV[0];
+
+# Calculate SHA-1 hash of stdin
+my $hash = Digest::SHA->new(1)
+                      ->addfile(*STDIN)
+                      ->digest();
+
+# Open the hash db
+Readonly my $PATH_FOR => retrieve($HASH_DB)
+    or die "Cannot read from $HASH_DB.";
+
+# Call Moiron Lachesis to alot
+exec 'moirai', 'lachesis', $PATH_FOR->{$hash}, $TTL;
