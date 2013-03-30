@@ -3,6 +3,10 @@ Moirai
 With this program you can add a "shelf life" to files: When a file
 hasn't been modified (mtime) for a specified time, it is deleted.
 
+Additionally, there are two programs, Klotho and Pieria, with which I
+can add expiry dates to emails through mutt. And there is Themis for
+adjusting emails' mtimes.
+
 This is just a quick hack. I hope to have the time to make a proper
 package of this, but that may as well be never. However, if you send me
 and email and kindly ask for a package, I might create one in
