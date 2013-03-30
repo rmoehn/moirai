@@ -12,6 +12,17 @@ use Time::Seconds;
 
 Readonly my $TTL_DB_FILE => $ENV{HOME} . '/.moirai';
 
+# Get the current time
+my $CUR_TIME = localtime;
+
+# Set the equivalents of the time units in seconds
+Readonly my %SECONDS_FOR => (
+    d => ONE_DAY,
+    w => ONE_WEEK,
+    m => ONE_MONTH,
+    y => ONE_YEAR,
+);
+
 # Set the modes in which this program can be used
 Readonly my $DEFAULT_KEY => 'default';
 Readonly my %SUB_FOR => (
@@ -54,7 +65,55 @@ sub set_ttl {
 
 # Delete all files that have expired
 sub delete_expired {
-    say 'Would delete all expired files.';
+    my $ttl_db = shift;
+
+    # Go through all files in all globs in the database
+    GLOB:
+    while (my ($glob, $ttl_str) =  each %{ $ttl_db->[0] }) {
+        my @files = glob $glob;
+        my $deleted_cnt = 0;
+        FILE:
+        for my $file (@files) {
+            # Skip the file if it doesn't exist
+            if (! -e $file) {
+                warn "There is no file named $file.\n";
+                next FILE;
+            }
+
+            # Determine the file's mtime
+            my $expiry_time = Time::Piece->new( (stat $file)[9] );
+
+            # Determine the file's time of expiry
+            if ($ttl_str =~ m/(\d+)(\w)/xms) {
+                my $time_val  = $1;
+                my $time_unit = $2;
+
+                # Make sure the given unit of time is acceptable
+                if (! exists($SECONDS_FOR{$time_unit})) {
+                    warn "Unknown time unit: $time_unit\n";
+                    next GLOB;
+                }
+
+                $expiry_time += $time_val * $SECONDS_FOR{$time_unit};
+            }
+            else {
+                warn "Invalid TTL format: $ttl_str\n";
+                next GLOB;
+            }
+
+            # Delete the file if it has expired
+            if ($expiry_time < $CUR_TIME) {
+                unlink $file;
+                ++$deleted_cnt;
+                warn "Deleted $file.\n";
+            }
+        }
+
+        # Remove the entry from the database if there are no more files to it
+        if ($deleted_cnt == scalar(@files)) {
+            delete $ttl_db->[0]->{$glob};
+        }
+    }
 }
 
 # Emit a helpful message
