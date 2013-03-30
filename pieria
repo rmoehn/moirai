@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
-# Creates an index database that maps from SHA-1 hash to files with those
-# hashes.
+# Creates an index database that maps between SHA-1 hashes and files with
+# those hashes and keeps track of deletion, modification and motion.
 #
 # I chose SHA1 as hashing method as Git uses it, too, and I am not striving
 # for cryptograpic safety.
@@ -9,27 +9,100 @@
 use 5.010;
 use warnings;
 use strict;
+use autodie;
+use sigtrap qw(die INT TERM QUIT);
+    # Thus the END block gets executed on those signals
+
+use DB_File;
+
+use Data::Dumper;
 
 use Readonly;
-use File::Find;
 use Perl6::Slurp;
 use Digest::SHA qw(sha1);
-use Storable;
 
-Readonly my $START_DIR => $ARGV[0];
-Readonly my $INDEX_DB  => $ARGV[1];
+use File::Find;
+use Linux::Inotify2;
 
+Readonly my $MAIL_BASE_DIR   => "$ENV{HOME}/mail";
+Readonly my $HASH_TO_PATH_DB => "$MAIL_BASE_DIR/.klotho_itp";
+Readonly my $PATH_TO_HASH_DB => "$MAIL_BASE_DIR/.klotho_pti";
+
+# Create a bidirectional mapping
 my %path_for;
-find(\&add_to_index, $START_DIR);
+tie %path_for, 'DB_File', $HASH_TO_PATH_DB, O_RDWR|O_CREAT, 0644, $DB_BTREE
+    or die "Cannot open database file $HASH_TO_PATH_DB $!";
+my %hash_for;
+tie %hash_for, 'DB_File', $PATH_TO_HASH_DB, O_RDWR|O_CREAT, 0644, $DB_BTREE
+    or die "Cannot open database file $PATH_TO_HASH_DB $!";
 
-store \%path_for, $INDEX_DB
-    or die "Cannot write to $INDEX_DB: $!";
+# If index doesn't exist yet, or whatever
+if (defined $ARGV[0] and $ARGV[0] eq 'recreate_index') {
+    %path_for = ();
+    %hash_for = ();
+    find(\&add_to_index, $MAIL_BASE_DIR);
+}
+else {
+    # Create a watcher
+    my $watcher = Linux::Inotify2->new()
+        or die "Cannot create inotify object: $!";
+
+    # Set all mail folders' cur parts to be watched
+    for my $folder (grep { -d } glob("$MAIL_BASE_DIR/*")) {
+        $watcher->watch(
+            "$folder/cur",
+            IN_CREATE | IN_DELETE | IN_MOVE,
+            \&inotify_receiver
+        ) or die "Cannot watch $folder/cur: $!";
+    }
+
+    while (1) {
+        $watcher->poll();
+    }
+}
+
+END {
+    untie %path_for;
+}
 
 sub add_to_index {
     return if !-f $File::Find::name;
+    my $hash = calc_hash_of($File::Find::name);
 
-    my $hash         = Digest::SHA->new(1)
-                                   ->addfile($File::Find::name)
-                                   ->digest();
-    $path_for{$hash} = $File::Find::name;
+    $path_for{$hash}             = $File::Find::name;
+    $hash_for{$File::Find::name} = $hash;
+}
+
+sub inotify_receiver {
+    my $event = shift;
+    my $path  = $event->fullname();
+
+    if ($event->IN_DELETE() or $event->IN_MOVED_FROM()) {
+        my $hash = $hash_for{$path};
+        delete $hash_for{$path};
+        delete $path_for{$hash};
+        warn "$path was deleted or removed from here.\n";
+    }
+    elsif ($event->IN_CREATE() or $event->IN_MOVED_TO()) {
+        my $hash = calc_hash_of($path);
+        $path_for{$hash} = $path;
+        $hash_for{$path} = $hash;
+        warn "$path was created or moved here.\n";
+    }
+    elsif ($event->IN_MODIFIED()) {
+        delete $hash_for{$path};
+        $hash_for{$path}              = calc_hash_of($path);
+        $path_for{ $hash_for{$path} } = $path;
+        warn "$path was modified.\n";
+    }
+    else {
+        die 'This should not happen.';
+    }
+}
+
+sub calc_hash_of {
+    my $filename = shift;
+    return Digest::SHA->new(1)
+                      ->addfile($filename)
+                      ->digest();
 }
