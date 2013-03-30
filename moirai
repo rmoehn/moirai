@@ -58,7 +58,7 @@ sub set_ttl {
 
     # Check for relative paths
     if ($glob !~ m{\A ~}xms and $glob !~ m{\A /}xms) {
-        die "No relative paths allowed.\n";
+        die "No relative paths allowed: $glob.\n";
     }
 
     $ttl_db->[0]->{$glob} = $ttl;
