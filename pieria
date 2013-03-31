@@ -15,8 +15,6 @@ use sigtrap qw(die INT TERM QUIT);
 
 use DB_File;
 
-use Data::Dumper;
-
 use Readonly;
 use Perl6::Slurp;
 use Digest::SHA qw(sha1);
@@ -89,7 +87,7 @@ sub inotify_receiver {
         $hash_for{$path} = $hash;
         warn "$path was created or moved here.\n";
     }
-    elsif ($event->IN_MODIFIED()) {
+    elsif ($event->IN_MODIFY()) {
         delete $hash_for{$path};
         $hash_for{$path}              = calc_hash_of($path);
         $path_for{ $hash_for{$path} } = $path;
