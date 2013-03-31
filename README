@@ -1,11 +1,28 @@
 Moirai
+------
 
-With this program you can add a "shelf life" to files: When a file
+With this program you can set a "shelf life" for files: When a file
 hasn't been modified (mtime) for a specified time, it is deleted.
 
-Additionally, there are two programs, Klotho and Pieria, with which I
-can add expiry dates to emails through mutt. And there is Themis for
-adjusting emails' mtimes.
+Klotho and Pieria
+-----------------
+
+With these two programs you can set the shelf lives of emails in a
+maildir through Mutt. Actually their principle of working can be
+generalised to work around a serious (to me) problem in Mutt: you
+cannot execute an external command on the currently selected email.
+
+One could also use Mutt-Guile to do that, but I am not sure of that
+project's status. And after all: Who uses Mutt anymore?
+
+Themis
+------
+
+This little scripts extracts the Date: fields from emails and adjusts
+the mtimes accordingly. Maildir only, of course.
+
+Note
+----
 
 This is just a quick hack. I hope to have the time to make a proper
 package of this, but that may as well be never. However, if you send me
