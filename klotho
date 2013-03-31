@@ -18,10 +18,14 @@ use autodie qw(:all);
 
 use Readonly;
 use Digest::SHA;
-use Storable;
+
+use DB_File;
 
 Readonly my $MAIL_BASE_DIR => $ENV{HOME} . '/mail';
-Readonly my $HASH_DB       => $ENV{HOME} . '/mail/.klotho';
+Readonly my $HASH_DB       => $ENV{HOME} . '/mail/.klotho_itp';
+
+die "Usage: klotho <time to live>\n"
+    if not defined $ARGV[0];
 Readonly my $TTL           => $ARGV[0];
 
 # Calculate SHA-1 hash of stdin
@@ -30,8 +34,9 @@ my $hash = Digest::SHA->new(1)
                       ->digest();
 
 # Open the hash db
-Readonly my $PATH_FOR => retrieve($HASH_DB)
-    or die "Cannot read from $HASH_DB.";
+my %path_for;
+tie %path_for, 'DB_File', $HASH_DB, O_RDWR|O_CREAT, 0644, $DB_BTREE
+    or die "Cannot open database file $HASH_DB $!";
 
 # Call Moiron Lachesis to alot
-exec 'moirai', 'lachesis', $PATH_FOR->{$hash}, $TTL;
+exec 'moirai', 'lachesis', $path_for{$hash}, $TTL;
