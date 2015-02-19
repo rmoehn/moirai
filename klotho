@@ -39,4 +39,6 @@ tie %path_for, 'DB_File', $HASH_DB, O_RDWR|O_CREAT, 0644, $DB_BTREE
     or die "Cannot open database file $HASH_DB $!";
 
 # Call Moiron Lachesis to alot
+die "No path for this hash: $hash"
+    if not defined $path_for{$hash};
 exec 'moirai', 'lachesis', $path_for{$hash}, $TTL;

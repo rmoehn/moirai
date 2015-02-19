@@ -35,7 +35,7 @@ tie %hash_for, 'DB_File', $PATH_TO_HASH_DB, O_RDWR|O_CREAT, 0644, $DB_BTREE
     or die "Cannot open database file $PATH_TO_HASH_DB $!";
 
 # If index doesn't exist yet, or whatever
-if (defined $ARGV[0] and $ARGV[0] eq 'recreate_index') {
+if (defined $ARGV[0] and $ARGV[0] eq 'recreate') {
     %path_for = ();
     %hash_for = ();
     find(\&add_to_index, $MAIL_BASE_DIR);

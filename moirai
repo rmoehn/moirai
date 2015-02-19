@@ -1,13 +1,14 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 use 5.010;
 use warnings;
 use strict;
-use autodie qw(:all);
+use autodie;
 
 use Readonly;
 use YAML::Tiny;
 use Data::Dumper;
+use File::Path;
 use Time::Piece;
 use Time::Seconds;
 
@@ -78,6 +79,7 @@ sub delete_expired {
             # Skip the file if it doesn't exist
             if (! -e $file) {
                 warn "There is no file named $file.\n";
+                delete $ttl_db->[0]->{$glob};
                 next FILE;
             }
 
@@ -104,7 +106,7 @@ sub delete_expired {
 
             # Delete the file if it has expired
             if ($expiry_time < $CUR_TIME) {
-                unlink $file;
+                File::Path::remove_tree($file);
                 ++$deleted_cnt;
                 warn "Deleted $file.\n";
             }
